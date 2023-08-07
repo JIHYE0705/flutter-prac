@@ -56,6 +56,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {  // 모든 위젯은 위젯이 항상 최신 상태로 유지되도록 위젯의 상황이 변경될 때마다 자동으로 호출되는 `build()` 메서드를 정의
+    Widget page;
+    switch(selectedIndex) {
+      case 0:
+        page = GeneratorPage();
+        break;
+      case 1:
+        page = Placeholder();
+        break;
+      default:
+        throw UnimplementedError('no widget for $selectedIndex');
+    }
+
     return Scaffold(
       body: Row(
         children: [
@@ -83,7 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
           Expanded( // 일부 하위 요소는 필요한 만큼만 공간을 차지하고 다른 위젯은 남은 공간을 최대한 차지해야하는 레이아웃을 표현할 수 있음
               child: Container(
                 color: Theme.of(context).colorScheme.primaryContainer,
-                child: GeneratorPage(),
+                child: page,
               ),
           ),
         ],
