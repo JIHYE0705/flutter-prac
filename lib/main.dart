@@ -68,38 +68,41 @@ class _MyHomePageState extends State<MyHomePage> {
         throw UnimplementedError('no widget for $selectedIndex');
     }
 
-    return Scaffold(
-      body: Row(
-        children: [
-          SafeArea( // 하위 요소가 하드웨어 노치나 상태 표시줄로 가려지지 않도록 함
-              child: NavigationRail(
-                extended: false,  // true 로 변경되면 라벨이 아이콘 옆에 표시됨
-                destinations: [
-                  NavigationRailDestination(
-                    icon: Icon(Icons.home),
-                    label: Text('Home'),
+    return LayoutBuilder(builder: (context, constraints) {
+        return Scaffold(
+          body: Row(
+            children: [
+              SafeArea( // 하위 요소가 하드웨어 노치나 상태 표시줄로 가려지지 않도록 함
+                  child: NavigationRail(
+                    extended: constraints.maxWidth >= 600,
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: Icon(Icons.home),
+                        label: Text('Home'),
+                      ),
+                      NavigationRailDestination(
+                        icon: Icon(Icons.favorite),
+                        label: Text('Favorites'),
+                      ),
+                    ],
+                    selectedIndex: selectedIndex,
+                    onDestinationSelected: (value) {
+                      setState(() {
+                        selectedIndex = value;
+                      });
+                    },
                   ),
-                  NavigationRailDestination(
-                    icon: Icon(Icons.favorite),
-                    label: Text('Favorites'),
+              ),
+              Expanded( // 일부 하위 요소는 필요한 만큼만 공간을 차지하고 다른 위젯은 남은 공간을 최대한 차지해야하는 레이아웃을 표현할 수 있음
+                  child: Container(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    child: page,
                   ),
-                ],
-                selectedIndex: selectedIndex,
-                onDestinationSelected: (value) {
-                  setState(() {
-                    selectedIndex = value;
-                  });
-                },
               ),
+            ],
           ),
-          Expanded( // 일부 하위 요소는 필요한 만큼만 공간을 차지하고 다른 위젯은 남은 공간을 최대한 차지해야하는 레이아웃을 표현할 수 있음
-              child: Container(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: page,
-              ),
-          ),
-        ],
-      ),
+        );
+      }
     );
   }
 }
