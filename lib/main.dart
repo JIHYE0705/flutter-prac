@@ -45,15 +45,23 @@ class MyAppState extends ChangeNotifier {
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+
+  var selectedIndex = 0;
+
   @override
   Widget build(BuildContext context) {  // 모든 위젯은 위젯이 항상 최신 상태로 유지되도록 위젯의 상황이 변경될 때마다 자동으로 호출되는 `build()` 메서드를 정의
     return Scaffold(
       body: Row(
         children: [
-          SafeArea(
+          SafeArea( // 하위 요소가 하드웨어 노치나 상태 표시줄로 가려지지 않도록 함
               child: NavigationRail(
-                extended: false,
+                extended: false,  // true 로 변경되면 라벨이 아이콘 옆에 표시됨
                 destinations: [
                   NavigationRailDestination(
                     icon: Icon(Icons.home),
@@ -64,13 +72,15 @@ class MyHomePage extends StatelessWidget {
                     label: Text('Favorites'),
                   ),
                 ],
-                selectedIndex: 0,
+                selectedIndex: selectedIndex,
                 onDestinationSelected: (value) {
-                  print('selected: $value');
+                  setState(() {
+                    selectedIndex = value;
+                  });
                 },
               ),
           ),
-          Expanded(
+          Expanded( // 일부 하위 요소는 필요한 만큼만 공간을 차지하고 다른 위젯은 남은 공간을 최대한 차지해야하는 레이아웃을 표현할 수 있음
               child: Container(
                 color: Theme.of(context).colorScheme.primaryContainer,
                 child: GeneratorPage(),
@@ -82,7 +92,7 @@ class MyHomePage extends StatelessWidget {
   }
 }
 
-class GeneratorPage extends StatelessWidget {
+class GeneratorPage extends StatelessWidget { // `MyHomePage` 의 전체 콘텐츠 추출
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
