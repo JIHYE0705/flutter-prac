@@ -32,6 +32,17 @@ class MyAppState extends ChangeNotifier {
     current = WordPair.random();
     notifyListeners();
   }
+
+  var favorites = <WordPair>[]; // 새 속성 `favorites` 추가. 제네릭을 이용하여 목록에 `WordPair>[]` 단어 쌍만 포함될 수 있다고 지정함.
+
+  void toggleFavorite() {
+    if(favorites.contains(current)) {
+      favorites.remove(current);
+    } else {
+      favorites.add(current);
+    }
+    notifyListeners();
+  }
 }
 
 class MyHomePage extends StatelessWidget {
