@@ -27,20 +27,34 @@ class MyApp extends StatelessWidget {
 
 class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
+  var history = <WordPair>[];
+
+  GlobalKey? historyListKey;
 
   void getNext() {  // 임의의 새 `WordPair` 를 `current`에 재 할당함. 또한 `MyAppState`를 보고 있는 사람에게 알림을 보내는 `notifyListeners()` (`ChangeNotifier` 의 메서드) 를 호출함.
+    history.insert(0, current);
+    var animatedList = historyListKey?.currentState as AnimatedListState?;
+    animatedList?.insertItem(0);
+
     current = WordPair.random();
     notifyListeners();
   }
 
   var favorites = <WordPair>[]; // 새 속성 `favorites` 추가. 제네릭을 이용하여 목록에 `WordPair>[]` 단어 쌍만 포함될 수 있다고 지정함.
 
-  void toggleFavorite() {
+  void toggleFavorite([WordPair? pair]) {
+    pair = pair ?? current;
+
     if(favorites.contains(current)) {
       favorites.remove(current);
     } else {
       favorites.add(current);
     }
+    notifyListeners();
+  }
+
+  void removeFavorite(WordPair pair) {
+    favorites.remove(pair);
     notifyListeners();
   }
 }
@@ -56,6 +70,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {  // 모든 위젯은 위젯이 항상 최신 상태로 유지되도록 위젯의 상황이 변경될 때마다 자동으로 호출되는 `build()` 메서드를 정의
+    var colorScheme = Theme.of(context).colorScheme;
     Widget page;
     switch(selectedIndex) {
       case 0:
@@ -68,41 +83,71 @@ class _MyHomePageState extends State<MyHomePage> {
         throw UnimplementedError('no widget for $selectedIndex');
     }
 
-    return LayoutBuilder(builder: (context, constraints) {
-        return Scaffold(
-          body: Row(
-            children: [
-              SafeArea( // 하위 요소가 하드웨어 노치나 상태 표시줄로 가려지지 않도록 함
-                  child: NavigationRail(
-                    extended: constraints.maxWidth >= 600,
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: Icon(Icons.home),
-                        label: Text('Home'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.favorite),
-                        label: Text('Favorites'),
-                      ),
-                    ],
-                    selectedIndex: selectedIndex,
-                    onDestinationSelected: (value) {
-                      setState(() {
-                        selectedIndex = value;
-                      });
-                    },
-                  ),
-              ),
-              Expanded( // 일부 하위 요소는 필요한 만큼만 공간을 차지하고 다른 위젯은 남은 공간을 최대한 차지해야하는 레이아웃을 표현할 수 있음
-                  child: Container(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    child: page,
-                  ),
-              ),
-            ],
-          ),
-        );
-      }
+    var mainArea = ColoredBox(
+      color: colorScheme.surfaceVariant,
+      child: AnimatedSwitcher(
+        duration: Duration(milliseconds: 200),
+        child: page,
+      ),
+    );
+    return Scaffold(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if(constraints.maxWidth < 450) {
+            return Column(
+              children: [
+                Expanded(child: mainArea),
+                SafeArea(
+                    child: BottomNavigationBar(
+                      items: [
+                        BottomNavigationBarItem(
+                          icon: Icon(Icons.home),
+                          label: 'Home'
+                        ),
+                        BottomNavigationBarItem(
+                            icon: Icon(Icons.favorite),
+                            label: 'Favorites'),
+                      ],
+                      currentIndex: selectedIndex,
+                      onTap: (value) {
+                        setState(() {
+                          selectedIndex = value;
+                        });
+                      },
+                    ),
+                )
+              ],
+            );
+          } else {
+            return Row(
+              children: [
+                SafeArea(
+                    child: NavigationRail(
+                      extended: constraints.maxWidth >= 600,
+                      destinations: [
+                        NavigationRailDestination(
+                            icon: Icon(Icons.home),
+                            label: Text('Home')
+                        ),
+                        NavigationRailDestination(
+                            icon: Icon(Icons.favorite),
+                            label: Text('Favorites')
+                        ),
+                      ],
+                      selectedIndex: selectedIndex,
+                      onDestinationSelected: (value) {
+                        setState(() {
+                          selectedIndex = value;
+                        });
+                      },
+                    ),
+                ),
+                Expanded(child: mainArea),
+              ],
+            );
+          }
+        },
+      ),
     );
   }
 }
@@ -124,6 +169,10 @@ class GeneratorPage extends StatelessWidget { // `MyHomePage` 의 전체 콘텐�
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Expanded(
+            flex: 3,
+            child: HistoryListView(),
+          ),
           BigCard(pair: pair),
           SizedBox(height: 10),
           Row(
@@ -145,6 +194,7 @@ class GeneratorPage extends StatelessWidget { // `MyHomePage` 의 전체 콘텐�
               ),
             ],
           ),
+          Spacer(flex: 2),
         ],
       ),
     );
@@ -153,9 +203,9 @@ class GeneratorPage extends StatelessWidget { // `MyHomePage` 의 전체 콘텐�
 
 class BigCard extends StatelessWidget {
   const BigCard({
-    super.key,
+    Key? key,
     required this.pair,
-  });
+  }) : super(key: key);
 
   final WordPair pair;
 
@@ -178,11 +228,23 @@ class BigCard extends StatelessWidget {
       color: theme.colorScheme.primary, // `colorScheme` 속성과 동일하도록 카드의 색상 정의, 색 구성표에는 여러 색상이 포함되어 있으며 `primary` 가 앱을 정의하는 가장 두드러진 색상
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Text(
-          pair.asLowerCase,
-          style: style,
-          semanticsLabel: "${pair.first} ${pair.second}",
-        ),  // `appState` 를 사용하고 해당 클래스의 유일한 멤버인 `current`(즉, `WordPair`)에 액세스함. `WordPair` 는 `asPascalCase` 또는 `asSnakeCase` 등 여러 유용한 getter 를 제공
+        child: AnimatedSize(
+          duration: Duration(milliseconds: 200),
+          child: MergeSemantics(
+            child: Wrap(
+              children: [
+                Text(
+                  pair.first,
+                  style: style.copyWith(fontWeight: FontWeight.w200),
+                ),
+                Text(
+                  pair.second,
+                  style: style.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -191,6 +253,7 @@ class BigCard extends StatelessWidget {
 class FavoritesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    var theme = Theme.of(context);
     var appState = context.watch<MyAppState>();
 
     if(appState.favorites.isEmpty) {
@@ -198,19 +261,91 @@ class FavoritesPage extends StatelessWidget {
         child: Text('No favorites yet.'),
       );
     }
-
-    return ListView(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(30),
           child: Text('You have ${appState.favorites.length} favorites:'),
         ),
-        for(var pair in appState.favorites)
-          ListTile(
-            leading: Icon(Icons.favorite),
-            title: Text(pair.asLowerCase),
-          ),
+        Expanded(
+            child: GridView(
+              gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 400,
+                childAspectRatio: 400 / 80,
+              ),
+              children: [
+                for(var pair in appState.favorites)
+                  ListTile(
+                    leading: IconButton(
+                      icon: Icon(Icons.delete_outline, semanticLabel: 'Deleted'),
+                      color: theme.colorScheme.primary,
+                      onPressed: () {
+                        appState.removeFavorite(pair);
+                      },
+                    ),
+                    title: Text(
+                      pair.asLowerCase,
+                      semanticsLabel: pair.asPascalCase,
+                    ),
+                  ),
+              ],
+            ),
+        ),
       ],
+    );
+  }
+}
+
+class HistoryListView extends StatefulWidget {
+  const HistoryListView({Key? key}) : super(key: key);
+
+  @override
+  State<HistoryListView> createState() => _HistoryListViewState();
+}
+
+class _HistoryListViewState extends State<HistoryListView> {
+  final _key = GlobalKey();
+
+  static const Gradient _maskingGradient = LinearGradient(
+    colors: [Colors.transparent, Colors.black],
+    stops: [0.0, 0.5],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<MyAppState>();
+    appState.historyListKey = _key;
+
+    return ShaderMask(
+      shaderCallback: (bounds) => _maskingGradient.createShader(bounds),
+      blendMode: BlendMode.dstIn,
+      child: AnimatedList(
+        key: _key,
+        reverse: true,
+        padding: EdgeInsets.only(top: 100),
+        initialItemCount: appState.history.length,
+        itemBuilder: (context, index, animation) {
+          final pair = appState.history[index];
+          return SizeTransition(
+            sizeFactor: animation,
+            child: Center(
+              child: TextButton.icon(
+                  onPressed: () {
+                    appState.toggleFavorite(pair);
+                    },
+                  icon: appState.favorites.contains(pair) ? Icon(Icons.favorite, size: 12) : SizedBox(),
+                  label: Text(
+                    pair.asLowerCase,
+                    semanticsLabel: pair.asPascalCase,
+                  ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
